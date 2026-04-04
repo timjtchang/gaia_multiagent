@@ -164,6 +164,7 @@ def build_agent_graph(
             )
             return {"messages": [cleaned_response]}
 
+
         return {"messages": [response]}
 
     # -- Assemble the graph --------------------------------------------------
@@ -189,18 +190,7 @@ def build_finalizer(llm: BaseChatModel | None = None):
     return build_agent_graph(
         name="Finalizer",
         system_prompt=(
-            "You are an output formatter for the GAIA benchmark.\n"
-            "I will provide you with an original task and a raw answer.\n"
-            "Your job is to extract the FINAL ANSWER and return ONLY the raw value.\n\n"
-            "RULES:\n"
-            "- Return ONLY the answer value, nothing else. No explanations, no prefixes.\n"
-            "- If the raw answer contains reasoning/explanation, extract just the final value.\n"
-            "- If the answer is a list, format as comma-separated values.\n"
-            "- If the answer is a number, return just the number.\n"
-            "- If the answer is a name, return just the name.\n"
-            "- Do NOT add 'FINAL ANSWER:' or any other prefix.\n"
-            "- Do NOT add periods at the end unless they are part of the answer.\n"
-            "- If the raw answer is an error message or says 'I cannot', return an empty string."
+            "You are an output formatter for the GAIA benchmark. I will provide you with a reasoning trace. Your job is to extract the final answer and return ONLY the raw value."
         ),
         llm=llm,
     )
@@ -229,8 +219,7 @@ def build_mathematician(llm: BaseChatModel | None = None):
         name="Mathematician",
         system_prompt=(
             "You are a math and computation specialist.\n"
-            "Solve problems step by step. Use the calculator for arithmetic\n"
-            "and run_python for complex computations.\n"
+            "Solve problems step by step. Use run_python for complex computations and the calculator for arithmetic\n"
             "Always double-check your work. Give exact numerical answers."
         ),
         tools=MATH_TOOLS,
@@ -245,24 +234,14 @@ def build_file_analyst(llm: BaseChatModel | None = None):
         system_prompt=(
             "You are an expert file analysis and data processing agent.\n"
             "Your goal is to extract information, process data, and execute code accurately.\n\n"
-            "IMPORTANT: The user message will contain 'FILE PATH: <path>' at the top.\n"
-            "You MUST use that exact path when calling tools. Do NOT guess or modify the path.\n\n"
-            "TOOL ROUTING RULES (by file extension):\n"
-            "1. .mp3 / .wav / .ogg audio → Use `transcribe_audio` with the exact file path.\n"
-            "2. .png / .jpg / .jpeg / .gif / .webp image → Use `analyze_image` with the exact file path and a detailed prompt.\n"
-            "3. .xlsx / .xls spreadsheet → Use `run_python` to write a pandas script. Example:\n"
-            "   import pandas as pd\n"
-            "   df = pd.read_excel('/tmp/file.xlsx')\n"
-            "   print(df.head())\n"
-            "   You MUST use print() to output results.\n"
-            "4. .py Python file → Use `execute_python` with the exact file path to run it and get its output.\n"
-            "5. .txt / .md / .json / .csv text → Use `read_file` for small files. For large CSVs, use `run_python` with pandas.\n"
-            "6. .pdf → Use `run_python` with PyPDF2 or pdfplumber to extract text.\n\n"
-            "CRITICAL RULES:\n"
-            "- Always check the file extension FIRST to pick the right tool.\n"
-            "- For `run_python`, you MUST use print() to output results.\n"
-            "- Never say 'I cannot access the file' — the file IS available at the given path.\n"
-            "- Think step-by-step, but keep your final answers concise."
+            "TOOL ROUTING RULES:\n"
+            "1. Plain Text: Use `read_file` for small text files (.txt, .md, .json). Note: outputs are truncated at 10k chars. If you need to aggregate or process large amounts of text/data, write a Python script instead.\n"
+            "2. Binary/Spreadsheets: For .xlsx files. Use `run_python` to write a script to load and analyze the data. You MUST use print() to output the final result\n"
+            "3. Running Existing Code: If asked for the output of an attached .py file, use `execute_python` with the exact file path. Do not try to read the file first.\n"
+            "4. Data Wrangling: Use `run_python` for math, filtering, or complex logic that requires code execution.\n"
+            "5. For .mp3/.wav audio files, use `transcribe_audio` with the file path.\n"
+            "6. Images: For .png, .jpg, .jpeg, .gif, .webp files, use `analyze_image` with the file path and a detailed prompt describing what you need to extract or analyze.\n"
+            "Think step-by-step, but keep your final answers concise and strictly answer the prompt."
         ),
         tools=FILE_TOOLS,
         llm=llm,
