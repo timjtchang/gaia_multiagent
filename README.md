@@ -60,6 +60,10 @@ Check out how the different sub-agents handle various tasks:
 
 ![Wiki Search Demo](demo/wikisearch.gif)
 
+### LangSmith Traces
+
+![LangSmith Traces](demo/langsmith.jpg)
+
 ## Key Updates & Optimizations
 
 I tweaked the standard setup to fix a lot of the common formatting, context limit, and hallucination issues you usually see in these benchmarks:
