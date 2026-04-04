@@ -4,7 +4,7 @@ This is a multi-agent system built with **LangGraph** to tackle the [GAIA benchm
 
 **This project serves as my final assignment for the [Hugging Face Agents Course](https://huggingface.co/learn/agents-course/en), specifically the [Unit 4 Hands-on](https://huggingface.co/learn/agents-course/en/unit4/hands-on).**
 
-**Current Performance: 75% (17/20) on Level 1**
+**Current Performance: 85% (17/20) on Level 1**
 
 - **Passed:** All web search tasks.
 - **Issues:** File tests run perfectly on my local machine but fail during online evaluation because the Hugging Face datasets expire/go missing. Also, haven't implemented multimodal video evaluation yet.
