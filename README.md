@@ -63,7 +63,7 @@ Check out how the different sub-agents handle various tasks:
 
 ### LangSmith Traces
 
-![LangSmith Traces](demo/langsmith.jpg)
+![LangSmith Traces]
 
 ## Key Updates & Optimizations
 
