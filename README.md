@@ -9,6 +9,34 @@ This is a multi-agent system built with **LangGraph** to tackle the [GAIA benchm
 - **Passed:** All web search tasks.
 - **Issues:** File tests run perfectly on my local machine but fail during online evaluation because the Hugging Face datasets expire/go missing. Also, haven't implemented multimodal video evaluation yet.
 
+## Demos
+
+Check out how the different sub-agents handle various tasks:
+
+### Audio Transcription & Analysis
+
+![Audio Demo](demo/audio.gif)
+
+### Excel File Processing
+
+![Excel Demo](demo/excel.gif)
+
+### Mathematical Problem Solving
+
+![Math Demo](demo/math.gif)
+
+### General Reasoning
+
+![Reasoning Demo](demo/reasoning.gif)
+
+### Live Web Search
+
+![Web Search Demo](demo/websearch.gif)
+
+### Deep Wiki Search
+
+![Wiki Search Demo](demo/wikisearch.gif)
+
 ## Architecture
 
 The system uses a **Supervisor/Orchestrator** pattern. A lightweight, fast LLM acts as the router to classify the prompt, then hands the task off to specialized sub-agents powered by a heavier reasoning model.
@@ -58,9 +86,6 @@ I tweaked the standard setup to fix a lot of the common formatting, context limi
 5. **Robust Python Sandbox**
    - Split Python execution into two tools: `execute_python` (for running existing local files) and `run_python` (for running scripts generated on-the-fly by the LLM).
    - Added auto-stripping for markdown backticks so generated Python code runs smoothly without syntax errors.
-
-6. **File Path Hardcoding**  
-   Hardcoded the file paths for the GAIA benchmark to bypass the issue where hosted Hugging Face dataset URLs expire during evaluation.
 
 ## How to Use
 
