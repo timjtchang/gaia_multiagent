@@ -15,6 +15,7 @@ The system uses a **Supervisor/Orchestrator** pattern. A lightweight, fast LLM a
 
 - **Orchestrator:** Qwen/Qwen2.5-72B-Instruct
 - **Sub-Agents & Finalizer:** Gemini-2.5-Flash
+- **Traces** LangSmith
 
 ```text
 ┌────────────┐    ┌──────────────┐
