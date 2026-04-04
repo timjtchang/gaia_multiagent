@@ -9,6 +9,29 @@ This is a multi-agent system built with **LangGraph** to tackle the [GAIA benchm
 - **Passed:** All web search tasks.
 - **Issues:** File tests run perfectly on my local machine but fail during online evaluation because the Hugging Face datasets expire/go missing. Also, haven't implemented multimodal video evaluation yet.
 
+## Architecture
+
+The system uses a **Supervisor/Orchestrator** pattern. A lightweight, fast LLM acts as the router to classify the prompt, then hands the task off to specialized sub-agents powered by a heavier reasoning model.
+
+- **Orchestrator:** Qwen/Qwen2.5-72B-Instruct
+- **Sub-Agents & Finalizer:** Gemini-2.5-Flash
+
+```text
+┌────────────┐    ┌──────────────┐
+│  classify  │───►│  researcher  │──┐
+│  (router)  │───►│ mathematician│──┤
+│            │───►│ file_analyst │──├──► [finalizer] ---> final_answer
+│            │───►│  generalist  │──┘
+└────────────┘    └──────────────┘
+```
+
+### Sub-Agents:
+
+- **Researcher**: Built for deep web searches (Tavily) and fact retrieval (ArXiv, Wiki).
+- **Mathematician**: Handles math problems using a calculator tool and dynamic Python execution.
+- **File Analyst**: Triggered whenever a file is attached. Reads files, runs Python data scripts (like pandas for Excel), and parses audio/images.
+- **Generalist**: The fallback agent for multi-step reasoning that doesn't fit cleanly into one bucket.
+
 ## Demos
 
 Check out how the different sub-agents handle various tasks:
@@ -36,29 +59,6 @@ Check out how the different sub-agents handle various tasks:
 ### Deep Wiki Search
 
 ![Wiki Search Demo](demo/wikisearch.gif)
-
-## Architecture
-
-The system uses a **Supervisor/Orchestrator** pattern. A lightweight, fast LLM acts as the router to classify the prompt, then hands the task off to specialized sub-agents powered by a heavier reasoning model.
-
-- **Orchestrator:** Qwen/Qwen2.5-72B-Instruct
-- **Sub-Agents & Finalizer:** Gemini-2.5-Flash
-
-```text
-┌────────────┐    ┌──────────────┐
-│  classify  │───►│  researcher  │──┐
-│  (router)  │───►│ mathematician│──┤
-│            │───►│ file_analyst │──├──► [finalizer] ---> final_answer
-│            │───►│  generalist  │──┘
-└────────────┘    └──────────────┘
-```
-
-### Sub-Agents:
-
-- **Researcher**: Built for deep web searches (Tavily) and fact retrieval (ArXiv, Wiki).
-- **Mathematician**: Handles math problems using a calculator tool and dynamic Python execution.
-- **File Analyst**: Triggered whenever a file is attached. Reads files, runs Python data scripts (like pandas for Excel), and parses audio/images.
-- **Generalist**: The fallback agent for multi-step reasoning that doesn't fit cleanly into one bucket.
 
 ## Key Updates & Optimizations
 
