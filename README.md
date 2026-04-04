@@ -1,53 +1,109 @@
-Gaia multi agent for hugging face agent tutorial (level 75% 17/20)
-websearch all passed, file test run well on local but file missing on online evaluation, not implement multimodel task (evaluate video)
+# GAIA Multi-Agent System (LangGraph)
 
-orchestrator(Qwen/Qwen2.5-72B-Instruct) -> sub agent(Gemini-2.5-flash) -> finalizer(Gemini-2.5-flash) -> end
+This is a multi-agent system built with **LangGraph** to tackle the [GAIA benchmark](https://huggingface.co/spaces/gaia-benchmark/leaderboard).
 
-researcher: for websearch
-mathematician: for math problem
-file analyst: when file attached
-generalist: for reasoning from query
+**This project serves as my final assignment for the [Hugging Face Agents Course](https://huggingface.co/learn/agents-course/en), specifically the [Unit 4 Hands-on](https://huggingface.co/learn/agents-course/en/unit4/hands-on).**
 
-The top-level graph:
+**Current Performance: 75% (17/20) on Level 1**
 
-    ┌────────────┐         ┌──────────────┐
-    │  classify  │────────►│  researcher  │──┐
-    │  (router)  │────────►│ mathematician│──┤
-    │            │────────►│ file_analyst │──├──►  [finalizer] ---> final_answer
-    │            │────────►│  generalist  │──┘
-    └────────────┘         └──────────────┘
+- **Passed:** All web search tasks.
+- **Issues:** File tests run perfectly on my local machine but fail during online evaluation because the Hugging Face datasets expire/go missing. Also, haven't implemented multimodal video evaluation yet.
 
-My update:
+## Architecture
 
-1. Wiki: use Wiki search and wiki loader cause formatting issue and cut off issue. So, I use jina to get entire page in markdown
-   - _Cantora 1_ (2009), _Cantora 2_ (2009) will not regard the same.
-   - no cut off avoiding hallucinating like regard album not in this period as in.
+The system uses a **Supervisor/Orchestrator** pattern. A lightweight, fast LLM acts as the router to classify the prompt, then hands the task off to specialized sub-agents powered by a heavier reasoning model.
 
-2. Tavily: Use `include_raw_content` and `search_depth="advanced"` to get enough info
+- **Orchestrator:** Qwen/Qwen2.5-72B-Instruct
+- **Sub-Agents & Finalizer:** Gemini-2.5-Flash
 
-3.clean wiki content to reduce around 60% token usage which is fetching by wiki search with jina
-
-```
-Fetching: https://en.wikipedia.org/wiki/1928_Summer_Olympics
-Original Tokens: 17,220
-Cleaned Tokens:  5,891
-Reduction:       65.79%
-
-Fetching: https://en.wikipedia.org/wiki/Wikipedia:Featured_article_candidates/Giganotosaurus/archive1
-Original Tokens: 13,114
-Cleaned Tokens:  4,442
-Reduction:       66.13%
-
-Fetching: https://en.wikipedia.org/wiki/Mercedes_Sosa
-Original Tokens: 15,818
-Cleaned Tokens:  7,950
-Reduction:       49.74%
+```text
+┌────────────┐    ┌──────────────┐
+│  classify  │───►│  researcher  │──┐
+│  (router)  │───►│ mathematician│──┤
+│            │───►│ file_analyst │──├──► [finalizer] ---> final_answer
+│            │───►│  generalist  │──┘
+└────────────┘    └──────────────┘
 ```
 
-3. use flash instead of lite to avoid hallucinaing
+### Sub-Agents:
 
-4. for file, use execute_python to run existing script and use run_python to run code genreated by agent.
+- **Researcher**: Built for deep web searches (Tavily) and fact retrieval (ArXiv, Wiki).
+- **Mathematician**: Handles math problems using a calculator tool and dynamic Python execution.
+- **File Analyst**: Triggered whenever a file is attached. Reads files, runs Python data scripts (like pandas for Excel), and parses audio/images.
+- **Generalist**: The fallback agent for multi-step reasoning that doesn't fit cleanly into one bucket.
 
-5. strip markdown header to let generated python code run sommthly
+## Key Updates & Optimizations
 
-6. since datasets host by huggingface for evaluation expired, hardcode file path for reliable fie path
+I tweaked the standard setup to fix a lot of the common formatting, context limit, and hallucination issues you usually see in these benchmarks:
+
+1. **Wiki Extraction via Jina AI**  
+   Standard Wikipedia search/loaders usually have formatting issues or aggressively cut off content. I routed Wiki searches through Jina AI to grab the entire page in clean Markdown.
+
+2. **Aggressive Token Reduction**  
+   Getting entire Wiki pages is great, but it eats the context window. I wrote a custom text cleaner (`_clean_wiki_content`) that strips out Jina metadata, image markdown, "See also"/References sections, and inline link noise while preserving the actual text and tables.
+
+   **Result:** Cut token usage by ~50-65% per search.
+
+   **Examples:**
+   - 1928 Summer Olympics: 17,220 → **5,891 tokens** (65% reduction)
+   - Giganotosaurus: 13,114 → **4,442 tokens** (66% reduction)
+   - Mercedes Sosa: 15,818 → **7,950 tokens** (49% reduction)
+
+3. **Tavily Deep Search**  
+   Upgraded the Tavily tool to use `search_depth="advanced"` and `include_raw_content` to pull full page text instead of just snippets.
+
+4. **Model Upgrade**  
+   Swapped out Gemini Lite for **Gemini-2.5-Flash** across all sub-agents to significantly cut down on hallucinations during complex reasoning.
+
+5. **Robust Python Sandbox**
+   - Split Python execution into two tools: `execute_python` (for running existing local files) and `run_python` (for running scripts generated on-the-fly by the LLM).
+   - Added auto-stripping for markdown backticks so generated Python code runs smoothly without syntax errors.
+
+6. **File Path Hardcoding**  
+   Hardcoded the file paths for the GAIA benchmark to bypass the issue where hosted Hugging Face dataset URLs expire during evaluation.
+
+## How to Use
+
+### Prerequisites
+
+You'll need API keys for Google (Gemini), Hugging Face (Qwen routing), and Tavily (Search).
+
+```bash
+export HF_TOKEN="hf_your_token_here"
+export GOOGLE_API_KEY="AIzaSy_your_key_here"
+export TAVILY_API_KEY="tvly-your_key_here"
+```
+
+Install the required dependencies (LangGraph, LangChain, Google GenAI, etc.).
+
+### Running the System
+
+You can hit the entry point (`main.py`) in a few different ways:
+
+1. **Single Query (CLI)**
+
+```bash
+python main.py -q "What is the population of Tokyo?"
+```
+
+2. **Query with an Attached File**
+
+```bash
+python main.py -q "Calculate the sum of the revenue column." -f "/path/to/financials.xlsx"
+```
+
+3. **Interactive Mode (REPL)**
+
+```bash
+python main.py -i
+```
+
+(To attach a file in chat, append `file:<path>` to your message.)
+
+### Debug Mode
+
+To see the ReAct loop thinking step-by-step and watch tool execution outputs, use the `-v` flag:
+
+```bash
+python main.py -q "Who won the 1928 olympics?" -v
+```
