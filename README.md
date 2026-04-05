@@ -88,9 +88,10 @@ I tweaked the standard setup to fix a lot of the common formatting, context limi
 4. **Model Upgrade**  
    Swapped out Gemini Lite for **Gemini-2.5-Flash** across all sub-agents to significantly cut down on hallucinations during complex reasoning.
 
-5. **Robust Python Sandbox**
+5. **Dual-mode Python subprocess execution with timeout handling**
    - Split Python execution into two tools: `execute_python` (for running existing local files) and `run_python` (for running scripts generated on-the-fly by the LLM).
    - Added auto-stripping for markdown backticks so generated Python code runs smoothly without syntax errors.
+   - Added execution timeout to avoid hanging processes.
 
 ## How to Use
 
