@@ -182,7 +182,7 @@ def calculator(expression: str) -> str:
 # Tool 1: Dynamic Code Executor
 # ---------------------------------------------------------------------------
 @tool
-def run_python(code: str, timeout: int = 300) -> str:
+def run_python(code: str, timeout: int = 100) -> str:
     """
     Execute a dynamically generated Python code string in a sandboxed subprocess.
     Use this to write scripts for data processing (e.g., pandas with Excel), 
@@ -236,7 +236,7 @@ def run_python(code: str, timeout: int = 300) -> str:
 # Tool 2: Existing File Runner
 # ---------------------------------------------------------------------------
 @tool
-def execute_python(filepath: str, timeout: int = 300) -> str:
+def execute_python(filepath: str, timeout: int = 100) -> str:
     """
     Execute an EXISTING Python script file directly from the file system.
     Use this when the user asks for the output of a specific .py file.
@@ -403,6 +403,8 @@ def transcribe_audio(file_path: str) -> str:
                 }
             ]
         )
+
+        logger.info(response.text)
         return response.text
     except Exception as e:
         logger.error(f"Audio transcription failed: {e}")
@@ -412,14 +414,14 @@ def transcribe_audio(file_path: str) -> str:
 # ---------------------------------------------------------------------------
 # Tool Groups — used by agents.py to scope tools per sub-agent
 # ---------------------------------------------------------------------------
-RESEARCH_TOOLS = [tavily_search, arxiv_search, wiki_search, transcribe_audio, analyze_image]
+RESEARCH_TOOLS = [tavily_search, wiki_search, transcribe_audio, analyze_image]
 MATH_TOOLS = [calculator, run_python]
 FILE_TOOLS = [read_file, run_python, execute_python, transcribe_audio, analyze_image]
 
 # FIX: ALL_TOOLS was missing transcribe_audio and analyze_image
 # This meant the Generalist agent couldn't handle audio or image files
 ALL_TOOLS = [
-    tavily_search, arxiv_search, wiki_search,
+    tavily_search, wiki_search,
     calculator, run_python, read_file, execute_python,
     transcribe_audio, analyze_image,
 ]
