@@ -143,7 +143,7 @@ def _make_sub_agent_node(agent_key: str):
             logger.info(f"Raw Answer: {state['final_answer']}")
             message_content = (
                 f"Original Task: {state['task']}\n\n"
-                f"Raw Answer to Format: {state['final_answer']}"
+                f"Answer: {state['final_answer']}"
             )
         else:
             file_path = state.get("file_path", "")
@@ -343,3 +343,6 @@ def main():
 if __name__ == "__main__":
     load_dotenv()
     main()
+
+
+# {"task_id": "f918266a-b3e0-4914-865d-4faa564f1aef","question": "What is the final numeric output from the attached Python code?","Level": "1","file_name": "f918266a-b3e0-4914-865d-4faa564f1aef.py"}

@@ -1,6 +1,4 @@
 import os
-import re
-import shutil
 import gradio as gr
 import requests
 import pandas as pd
@@ -10,121 +8,26 @@ load_dotenv()
 
 # --- Constants ---
 DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
-GAIA_DATASET_DIR = None       # set once by _init_gaia_files()
-GAIA_FILE_MAP = {}            # task_id → absolute local path
-
-
-# ============================================================================
-# GAIA file pre-download from HuggingFace dataset repo
-# ============================================================================
-def _init_gaia_files():
-    """
-    Download the GAIA dataset repo once and build a task_id → file_path map.
-    This avoids relying on the scoring API's /files/ endpoint which 404s.
-    """
-    global GAIA_DATASET_DIR, GAIA_FILE_MAP
-
-    if GAIA_DATASET_DIR is not None:
-        return  # already initialised
-
-    try:
-        from huggingface_hub import snapshot_download
-        from datasets import load_dataset
-
-        print("Downloading GAIA dataset from HuggingFace Hub...")
-        GAIA_DATASET_DIR = snapshot_download(
-            repo_id="gaia-benchmark/GAIA",
-            repo_type="dataset",
-        )
-        print(f"GAIA dataset downloaded to: {GAIA_DATASET_DIR}")
-
-        # Load validation split metadata for all levels
-        for config in ("2023_level1", "2023_level2", "2023_level3"):
-            try:
-                ds = load_dataset(
-                    GAIA_DATASET_DIR,
-                    config,
-                    split="validation",
-                    trust_remote_code=True,
-                )
-                for example in ds:
-                    task_id = example.get("task_id", "")
-                    file_path_rel = example.get("file_path", "")
-                    if task_id and file_path_rel:
-                        abs_path = os.path.join(GAIA_DATASET_DIR, file_path_rel)
-                        if os.path.exists(abs_path):
-                            GAIA_FILE_MAP[task_id] = abs_path
-                            print(f"  Mapped: {task_id} → {abs_path}")
-                        else:
-                            print(f"  WARN: file not on disk: {abs_path}")
-            except Exception as e:
-                print(f"  Could not load config {config}: {e}")
-
-        print(f"GAIA file map built: {len(GAIA_FILE_MAP)} files indexed.")
-
-    except Exception as e:
-        print(f"WARNING: Failed to download GAIA dataset: {e}")
-        print("Will fall back to scoring API for file downloads.")
-        GAIA_DATASET_DIR = ""  # mark as attempted
-
-
-def _resolve_file(task_id: str, file_name: str, api_url: str) -> str:
-    """
-    Resolve the local file path for a GAIA task.
-    Priority:
-      1. HuggingFace dataset repo (pre-downloaded)
-      2. Scoring API /files/{task_id} endpoint (fallback)
-    Returns the local path, or "" if unavailable.
-    """
-    # --- Strategy 1: HF dataset repo ---
-    hf_path = GAIA_FILE_MAP.get(task_id, "")
-    if hf_path and os.path.exists(hf_path):
-        # Copy to /tmp with the original file_name so the agent sees
-        # a recognisable extension (.mp3, .xlsx, .png, etc.)
-        local_path = f"/tmp/{file_name}"
-        if not os.path.exists(local_path):
-            shutil.copy2(hf_path, local_path)
-        file_size = os.path.getsize(local_path)
-        print(f"File from HF dataset: {local_path} ({file_size} bytes)")
-        return local_path
-
-    # --- Strategy 2: Scoring API fallback ---
-    try:
-        file_url = f"{api_url}/files/{task_id}"
-        print(f"Falling back to scoring API: {file_url}")
-        resp = requests.get(file_url, timeout=60)
-        resp.raise_for_status()
-
-        local_path = f"/tmp/{file_name}"
-        with open(local_path, "wb") as f:
-            f.write(resp.content)
-
-        file_size = os.path.getsize(local_path)
-        print(f"File from scoring API: {local_path} ({file_size} bytes)")
-        if file_size == 0:
-            print(f"WARNING: Downloaded file is empty for {task_id}")
-            return ""
-        return local_path
-
-    except Exception as e:
-        print(f"WARNING: File download failed for {task_id}: {e}")
-        return ""
-
 
 # --- Your Agent (wrapping your LangGraph supervisor) ---
 class BasicAgent:
     def __init__(self):
+        # Import and build your supervisor graph ONCE at init
         from main import build_supervisor
         self.graph = build_supervisor()
         print("LangGraph Supervisor Agent initialized.")
 
     def __call__(self, question: str) -> str:
+        """Called once per question. Must return ONLY the answer string."""
         from main import solve
         try:
             answer = solve(question, file_path="", graph=self.graph)
         except Exception as e:
             print(f"Agent error: {e}")
             answer = ""
+        
+        # Clean the answer — GAIA uses exact match!
+        # Strip any "FINAL ANSWER:" prefix, whitespace, etc.
         answer = answer.strip()
         return answer
 
@@ -146,10 +49,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     questions_url = f"{api_url}/questions"
     submit_url = f"{api_url}/submit"
 
-    # 1. Pre-download GAIA files from HF dataset
-    _init_gaia_files()
-
-    # 2. Instantiate Agent
+    # 1. Instantiate Agent
     try:
         agent = BasicAgent()
     except Exception as e:
@@ -159,7 +59,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     agent_code = f"https://huggingface.co/spaces/{space_id}/tree/main"
     print(agent_code)
 
-    # 3. Fetch Questions
+    # 2. Fetch Questions
     print(f"Fetching questions from: {questions_url}")
     try:
         response = requests.get(questions_url, timeout=15)
@@ -171,7 +71,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     except Exception as e:
         return f"Error fetching questions: {e}", None
 
-    # 4. Run Agent on each question
+    # 3. Run Agent on each question
     results_log = []
     answers_payload = []
     print(f"Running agent on {len(questions_data)} questions...")
@@ -181,29 +81,18 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
         if not task_id or question_text is None:
             continue
 
+        # Check if the question has an associated file
         file_name = item.get("file_name", "")
         
         try:
-            file_path = ""
-
-            # Resolve file from HF dataset or scoring API
+            # If there's a file, download it first
             if file_name:
-                file_path = _resolve_file(task_id, file_name, api_url)
-
-                if file_path:
-                    # Replace embedded file paths in the question text
-                    question_text = re.sub(
-                        r'\./data/[^\s\)\"\']+',
-                        file_path,
-                        question_text
-                    )
-                else:
-                    print(f"Could not resolve file for task {task_id} — proceeding without it.")
-
-            # Run the agent
-            from main import solve
-            submitted_answer = solve(question_text, file_path=file_path, graph=agent.graph)
-
+                file_path = f"./data/{file_name}"
+                from main import solve
+                submitted_answer = solve(question_text, file_path=file_path, graph=agent.graph)
+            else:
+                submitted_answer = agent(question_text)
+            
             submitted_answer = submitted_answer.strip()
             answers_payload.append({"task_id": task_id, "submitted_answer": submitted_answer})
             results_log.append({
@@ -222,7 +111,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     if not answers_payload:
         return "Agent did not produce any answers.", pd.DataFrame(results_log)
 
-    # 5. Submit
+    # 4. Submit
     submission_data = {
         "username": username.strip(),
         "agent_code": agent_code,
