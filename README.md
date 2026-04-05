@@ -32,6 +32,7 @@ The system uses a **Supervisor/Orchestrator** pattern. A lightweight, fast LLM a
 - **Mathematician**: Handles math problems using a calculator tool and dynamic Python execution.
 - **File Analyst**: Triggered whenever a file is attached. Reads files, runs Python data scripts (like pandas for Excel), and parses audio/images.
 - **Generalist**: The fallback agent for multi-step reasoning that doesn't fit cleanly into one bucket.
+- **Answer Extraction(Finalizer)**: Align the model output with the evaluation benchmarks
 
 ### System Toolset(8)
 
