@@ -13,7 +13,7 @@ This is a multi-agent system built with **LangGraph** to tackle the [GAIA benchm
 
 The system uses a **Supervisor/Orchestrator** pattern. A lightweight, fast LLM acts as the router to classify the prompt, then hands the task off to specialized sub-agents powered by a heavier reasoning model.
 
-- **Orchestrator:** Qwen/Qwen2.5-72B-Instruct
+- **Orchestrator:** Qwen/Qwen2.5-7B-Instruct
 - **Sub-Agents & Finalizer:** Gemini-2.5-Flash
 - **Traces** LangSmith
 

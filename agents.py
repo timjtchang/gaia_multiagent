@@ -50,7 +50,7 @@ class AgentState(TypedDict):
 # LLM Factories
 # ============================================================================
 def build_qwen_llm(
-    model_id: str = "Qwen/Qwen2.5-72B-Instruct",
+    model_id: str = "Qwen/Qwen2.5-7B-Instruct",
     temperature: float = 0.0,
     max_tokens: int = 2048,
 ) -> ChatHuggingFace:
