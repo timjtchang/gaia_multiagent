@@ -28,10 +28,30 @@ The system uses a **Supervisor/Orchestrator** pattern. A lightweight, fast LLM a
 
 ### Sub-Agents:
 
-- **Researcher**: Built for deep web searches (Tavily) and fact retrieval (ArXiv, Wiki).
+- **Researcher**: Built for deep web searches (Tavily) and fact retrieval (Wiki).
 - **Mathematician**: Handles math problems using a calculator tool and dynamic Python execution.
 - **File Analyst**: Triggered whenever a file is attached. Reads files, runs Python data scripts (like pandas for Excel), and parses audio/images.
 - **Generalist**: The fallback agent for multi-step reasoning that doesn't fit cleanly into one bucket.
+
+### System Toolset(8)
+
+#### **Researcher**
+
+- **`tavily_search`**: High-fidelity web search with raw content extraction( raw_content, advanced mode, extract).
+- **`wiki_search`**: Knowledge retrieval formatted in clean Markdown( search -> page -> Jina AI).
+
+#### **Mathematician**
+
+- **`calculator`**: Rapid evaluation of mathematical expressions.
+- **`run_python`**: Environment for generating and executing dynamic scripts.
+
+#### **File Analyst**
+
+- **`read_file`**: Direct ingestion and parsing of local file data.
+- **`execute_python`**: Execution of predefined Python scripts and local assets.
+- **`run_python`**: Environment for generating and executing dynamic scripts.
+- **`analyze_image`**: vision processing for image analysis.( Gemini 2.5 flash )
+- **`transcribe_audio`**: Neural speech-to-text processing. ( Gemini 2.5 flash )
 
 ## Demos
 
