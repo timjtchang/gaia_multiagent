@@ -46,14 +46,15 @@ def tavily_search(query: str, max_results: int = 5, include_raw_content: bool = 
     )
 
     urls = [r["url"] for r in search_results.get("results", [])[:3]]
+    
     if urls:
         try:
             extracted = client.extract(urls=urls)
-            search_results["extracted_content"] = extracted
+            # search_results["extracted_content"] = extracted
         except Exception:
             pass
     
-    return search_results
+    return extracted
 
 
 
